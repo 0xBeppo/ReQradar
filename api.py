@@ -204,7 +204,6 @@ class API:
             print("[!] ERROR, something went wrong!")
             return
 
-        #TODO Make req to deploy_status till status not IN_PROGRESS
         status = self.get_deploy_status()
         while status != "COMPLETE":
             print("[*] Deploy in progress...")
@@ -212,7 +211,6 @@ class API:
             status = self.get_deploy_status()
 
         print("[+] Deploy completed!")
-
         return
 
 
@@ -227,5 +225,4 @@ class API:
 
         deploy_status = response.json()
         return deploy_status['status']
-
 

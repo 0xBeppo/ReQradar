@@ -10,8 +10,11 @@ __version__ = "0.0.1"
 __email__ = "eamarkel@gmail.com"
 __status__ = "development"
 
+from api import API
+
 def run():
-    pass
+    api = API()
+    print(api.get_log_sources())
 
 if __name__ == "__main__":
     run()
