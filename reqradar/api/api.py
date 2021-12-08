@@ -168,7 +168,7 @@ class API:
     #TODO
     #Log sources Delete and Update
 
-    def post_deploy(self, deploy_type="INCREMENTAL"): #TODO improve documentation (Errors)
+    def post_deploy(self, deploy_type="INCREMENTAL", force=False): #TODO improve documentation (Errors)
         """
         POST request to deploy changes in Qradar
         POST - /staged_config/deploy_status
@@ -177,14 +177,19 @@ class API:
         ----------
         deploy_type : str
             Type of the deploy, should be either INCREMENTAL or FULL
+        force: bool
+            Force the deployment even if deploy_needed is False
         """
         URL = f"https://{self.host}/api/staged_config/deploy_status"
+        print(deploy_type)
 
-        if deploy_type != "INCREMENTAL" or deploy_type != "FULL":
-            return "[!] ERROR: Deploy type should be either INCREMENTAL or FULL"
+        if deploy_type != "INCREMENTAL" and deploy_type != "FULL":
+            print("[!] ERROR: Deploy type should be either INCREMENTAL or FULL")
+            return
 
-        if self.deploy_needed == False:
-            return "[!] ERROR: No changes to deploy"
+        if self.deploy_needed == False and force != True:
+            print("[!] ERROR: No changes to deploy")
+            return
 
         response = requests.post(
             URL,
@@ -193,16 +198,16 @@ class API:
             verify = False
         )
 
-        if response.code != 200:
+        if response.status_code != 200:
             print("[!] ERROR, something went wrong!")
             return
 
         #TODO Make req to deploy_status till status not IN_PROGRESS
-        status = get_deploy_status()
+        status = self.get_deploy_status()
         while status != "COMPLETE":
             print("[*] Deploy in progress...")
             time.sleep(3)
-            status = get_deploy_status()
+            status = self.get_deploy_status()
 
         print("[+] Deploy completed!")
 
@@ -222,4 +227,6 @@ class API:
         return deploy_status['status']
 
 
-
+api = API()
+api.post_log_sources("prueba again", "desc", "127.0.0.1", "Linux OS")
+api.post_deploy()
