@@ -11,6 +11,7 @@ import requests
 import json
 import os
 import urllib
+import urllib3
 import env_manager
 
 HEADERS = {
@@ -48,6 +49,7 @@ class API:
         self.add_token()
         self.host = self.env.get_host()
         self.deploy_needed = False
+        urllib3.disable_warnings()
 
 
     def add_token(self):
@@ -227,6 +229,3 @@ class API:
         return deploy_status['status']
 
 
-api = API()
-api.post_log_sources("prueba again", "desc", "127.0.0.1", "Linux OS")
-api.post_deploy()
