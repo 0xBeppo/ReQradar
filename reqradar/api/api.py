@@ -6,6 +6,7 @@ __email__ = "eamarkel@gmail.com"
 __status__ = "development"
 
 import sys
+import time
 import requests
 import json
 import os
@@ -36,20 +37,38 @@ class API:
         GET request to get the id of the ID of specific log source
     post_log_sources(name, description, host_source, log_source_type)
         POST request to create a new log source based on the provided parameters
+    post_deploy(self, deploy_type="INCREMENTAL")
+        POST request to deploy changes in Qradar
+        POST - /staged_config/deploy_status
     """
 
     def __init__(self):
-        self.headers = headers
+        self.headers = HEADERS
         self.env = env_manager.Env()
         self.add_token()
         self.host = self.env.get_host()
+        self.deploy_needed = False
 
 
     def add_token(self):
         self.headers['Sec'] = self.env.get_sec()
         return
 
+
+    def check_deploy(self, data):
+        if "requires_deploy" in data:
+            if data['requires_deploy'] == True:
+                self.deploy_needed = True
+        return
+
+    def get_deploy_needed(self):
+        return self.deploy_needed
+
+
     def get_log_sources(self):
+        """
+        GET request to fetch all log sources. Also changes deploy_needed to true if some of the sources needs to be deployed
+        """
         URL = f"https://{self.host}/api/config/event_sources/log_source_management/log_sources"
 
         response = requests.get(
@@ -58,12 +77,17 @@ class API:
             verify=False
         )
 
-        return response.json()
+        log_sources = response.json()
+        for log_source in log_sources:
+            self.check_deploy(log_source)
+
+        return log_sources
 
 
     def post_log_sources(self, name, description, host_source, log_source_type):
         """
-        POST request to create a new log source based on the provided parameters
+        POST request to create a new log source based on the provided parameters.
+        Changes deploy_needed to True if the source needs to be deployed
 
         Parameters
         ----------
@@ -81,7 +105,7 @@ class API:
         params = {
             "name": name,
             "description": description,
-            "type_id": get_log_source_type_id(log_source_type),
+            "type_id": self.get_log_source_type_id(log_source_type),
             "protocol_type_id": 0,
             "protocol_parameters": [
                 {
@@ -111,7 +135,11 @@ class API:
             verify = False
         )
 
-        return response.json
+        log_source = response.json()
+        self.check_deploy(log_source)
+
+        return log_source
+
 
     def get_log_source_type_id(self, log_source_type):
         """
@@ -136,5 +164,62 @@ class API:
         log_source = response.json()
 
         return log_source[0]['id']
+
+    #TODO
+    #Log sources Delete and Update
+
+    def post_deploy(self, deploy_type="INCREMENTAL"): #TODO improve documentation (Errors)
+        """
+        POST request to deploy changes in Qradar
+        POST - /staged_config/deploy_status
+
+        Parameters
+        ----------
+        deploy_type : str
+            Type of the deploy, should be either INCREMENTAL or FULL
+        """
+        URL = f"https://{self.host}/api/staged_config/deploy_status"
+
+        if deploy_type != "INCREMENTAL" or deploy_type != "FULL":
+            return "[!] ERROR: Deploy type should be either INCREMENTAL or FULL"
+
+        if self.deploy_needed == False:
+            return "[!] ERROR: No changes to deploy"
+
+        response = requests.post(
+            URL,
+            headers = self.headers,
+            json = {"type": deploy_type},
+            verify = False
+        )
+
+        if response.code != 200:
+            print("[!] ERROR, something went wrong!")
+            return
+
+        #TODO Make req to deploy_status till status not IN_PROGRESS
+        status = get_deploy_status()
+        while status != "COMPLETE":
+            print("[*] Deploy in progress...")
+            time.sleep(3)
+            status = get_deploy_status()
+
+        print("[+] Deploy completed!")
+
+        return
+
+
+    def get_deploy_status(self):
+        URL = f"https://{self.host}/api/staged_config/deploy_status"
+
+        response = requests.get(
+            URL,
+            headers = self.headers,
+            verify = False
+        )
+
+        deploy_status = response.json()
+        return deploy_status['status']
+
 
 
