@@ -140,6 +140,7 @@ class API:
         log_source = response.json()
         self.check_deploy(log_source)
 
+        print(f"[+] Created log source {name}!")
         return log_source
 
 
@@ -225,4 +226,62 @@ class API:
 
         deploy_status = response.json()
         return deploy_status['status']
+
+    def get_event_rules(self):
+        """
+        GET - /analytics/rules
+        """
+        URL = f"https://{self.host}/api/analytics/rules"
+
+        response = requests.get(
+            URL,
+            headers = self.headers,
+            verify = False
+        )
+        event_rules = response.json()
+        return event_rules
+
+
+    def get_enabled_event_rules(self):
+        enabled_rules = []
+        rules = self.get_event_rules()
+        for rule in rules:
+            if rule['enabled'] == True:
+                enabled_rules.append(rule)
+
+        return enabled_rules
+
+    def disable_event_rule(self,rule_id):
+        """
+        POST - /analytics/rules/{rule_id}
+        """
+        URL = f"https://{self.host}/api/analytics/rules/{rule_id}"
+        params = {
+            "enabled": False
+        }
+        response = requests.post(
+            URL,
+            headers = self.headers,
+            json = params,
+            verify = False
+        )
+
+        if response.status_code != 200:
+            print(f"[!] ERROR: Could not disable rule {rule_id}")
+            return
+        print(f"[+] Rule {rule_id} disabled succesfully!")
+        return
+
+    def disable_all_event_rules(self):
+        enabled_rules = self.get_enabled_event_rules()
+
+        for rule in enabled_rules:
+            self.disable_event_rule(rule['id'])
+
+
+
+
+
+
+
 
